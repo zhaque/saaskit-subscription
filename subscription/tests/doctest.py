@@ -51,4 +51,15 @@ Again, get user's permissions
 >>> test_user.get_all_permissions()
 set([u'subscription.test'])
 
+Unsubscribe
+>>> us.active = False
+>>> us.save()
+
+Just to flush a cache
+>>> test_user = User.objects.get(username='test_user')
+
+>>> test_user.get_all_permissions()
+set([])
+
+
 """

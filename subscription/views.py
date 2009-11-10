@@ -6,8 +6,8 @@ from django.contrib.sites.models import Site
 from django.core.exceptions import ObjectDoesNotExist
 from django.core.urlresolvers import reverse
 from django.db import transaction
-from django.http import HttpResponseRedirect
-from django.shortcuts import render_to_response, get_object_or_404
+from django.http import HttpResponseRedirect, Http404
+from django.shortcuts import render_to_response, get_object_or_404, redirect
 from django.views.generic.list_detail import object_list
 from django.views.generic.simple import direct_to_template
 
@@ -138,8 +138,15 @@ def subscription_detail(request, object_id, payment_method="standard"):
         #should never get here
         raise Http404
 
-def unsubscribe(request, queryset=UserSubscription.objects.all()):
+def unsubscribe_or_reanimate(request, queryset=UserSubscription.objects.all(), 
+                             redirect_to='subscription_list'):
     """ find user's subscription and unsubscribe it """
     us = get_object_or_404(queryset, user=request.user)
-    us.active = False
-    us.unsubscribe()
+    if us.active:
+        #Unsubscribe user
+        us.active = False
+    else:
+        #liven user
+        us.active = True
+    us.save()
+    return redirect(redirect_to)

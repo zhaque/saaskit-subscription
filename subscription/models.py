@@ -130,17 +130,16 @@ class ActiveUSManager(models.Manager):
     def get_query_set(self):
         return super(ActiveUSManager, self).get_query_set().filter(active=True)
 
+SUBSCRIPTION_GRACE_PERIOD = getattr(settings, 'SUBSCRIPTION_GRACE_PERIOD', 2)
+
 class UserSubscription(models.Model):
     user = models.OneToOneField(auth.models.User, related_name="subscription")
     subscription = models.ForeignKey(Subscription)
     expires = models.DateField(_('expires'))
     active = models.BooleanField(default=True)
 
-    all_objects = models.Manager()
-    objects = ActiveUSManager()
-
-    grace_timedelta = datetime.timedelta(
-        getattr(settings, 'SUBSCRIPTION_GRACE_PERIOD', 2))
+    #all_objects = models.Manager()
+    #objects = ActiveUSManager()
 
     class Meta:
         unique_together = ( ('user','subscription'), )
@@ -160,8 +159,9 @@ class UserSubscription(models.Model):
     def expired(self):
         """Returns true if there is more than SUBSCRIPTION_GRACE_PERIOD
         days after expiration date."""
+        grace_timedelta = datetime.timedelta(SUBSCRIPTION_GRACE_PERIOD)
         return self.expires is not None and (
-            self.expires + self.grace_timedelta < datetime.date.today() )
+            self.expires + grace_timedelta < datetime.date.today() )
     expired.boolean = True
 
     def extend(self, timedelta=None):

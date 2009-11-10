@@ -37,16 +37,19 @@ class UserSubscriptionAdmin(admin.ModelAdmin):
     list_filter = ('active', 'subscription', )
     date_hierarchy = 'expires'
     form = UserSubscriptionAdminForm
-    fieldsets = (
-        (None, {'fields' : ('user', 'subscription', 'expires', 'active')}),
-        ('Actions', {'fields' : ('extend_subscription',),
-                     'classes' : ('collapse',)}),
-        )
-
-    def save_model(self, request, obj, form, change):
-        if form.cleaned_data['extend_subscription']:
-            obj.extend()
-        obj.save()
+#===============================================================================
+#    
+#    fieldsets = (
+#        (None, {'fields' : ('user', 'subscription', 'expires', 'active')}),
+#        ('Actions', {'fields' : ('extend_subscription',),
+#                     'classes' : ('collapse',)}),
+#        )
+# 
+#    def save_model(self, request, obj, form, change):
+#        if form.cleaned_data['extend_subscription']:
+#            obj.extend()
+#        obj.save()
+#===============================================================================
 
     # action for Django-SVN or django-batch-admin app
     actions = ( 'extend', )

@@ -7,7 +7,7 @@ urlpatterns = patterns('subscription.views',
     (r'^(?P<object_id>\d+)/$', 'subscription_detail', {}, 'subscription_detail'),
     url(r'^(?P<object_id>\d+)/(?P<payment_method>(standard|pro))$', 'subscription_detail', 
         name='subscription_detail'),
-    url(r'^unsubscribe/$', 'unsubscribe', name='unsubscribe'),
+    url(r'^unsubscribe_or_reanimate/$', 'unsubscribe_or_reanimate', name='unsubscribe_or_reanimate'),
     )
 
 urlpatterns += patterns('',
