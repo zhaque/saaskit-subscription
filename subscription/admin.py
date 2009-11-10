@@ -29,35 +29,27 @@ _ipn.allow_tags = True
 class UserSubscriptionAdminForm(forms.ModelForm):
     class Meta:
         model = UserSubscription
-    fix_group_membership = forms.fields.BooleanField(required=False)
     extend_subscription = forms.fields.BooleanField(required=False)
 
 class UserSubscriptionAdmin(admin.ModelAdmin):
-    list_display = ( '__unicode__', _user, _subscription, 'active', 'expires', 'valid' )
+    list_display = ( '__unicode__', _user, _subscription, 'active', 'expires')
     list_display_links = ( '__unicode__', )
     list_filter = ('active', 'subscription', )
     date_hierarchy = 'expires'
     form = UserSubscriptionAdminForm
     fieldsets = (
         (None, {'fields' : ('user', 'subscription', 'expires', 'active')}),
-        ('Actions', {'fields' : ('fix_group_membership', 'extend_subscription'),
+        ('Actions', {'fields' : ('extend_subscription',),
                      'classes' : ('collapse',)}),
         )
 
     def save_model(self, request, obj, form, change):
         if form.cleaned_data['extend_subscription']:
             obj.extend()
-        if form.cleaned_data['fix_group_membership']:
-            obj.fix()
         obj.save()
 
     # action for Django-SVN or django-batch-admin app
-    actions = ( 'fix', 'extend', )
-
-    def fix(self, request, queryset):
-        for us in queryset.all():
-            us.fix()
-    fix.short_description = 'Fix group membership'
+    actions = ( 'extend', )
 
     def extend(self, request, queryset):
         for us in queryset.all(): us.extend()
