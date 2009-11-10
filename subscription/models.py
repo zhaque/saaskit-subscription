@@ -113,16 +113,17 @@ class Subscription(models.Model):
                 }
         else:
             return _("No trial")
-
-# add User.get_subscription() method
-def __user_get_subscription(user, default=None):
-    """find active user's subscription """
-    try:
-        return UserSubscription.active_objects.get(user=user).subscription
-    except UserSubscription.DoesNotExist:
-        return default
-auth.models.User.add_to_class('get_subscription', __user_get_subscription)
-
+#===============================================================================
+# 
+# # add User.get_subscription() method
+# def __user_get_subscription(user, default=None):
+#    """find active user's subscription """
+#    try:
+#        return UserSubscription.active_objects.get(user=user).subscription
+#    except UserSubscription.DoesNotExist:
+#        return default
+# auth.models.User.add_to_class('get_subscription', __user_get_subscription)
+#===============================================================================
 
 class ActiveUSManager(models.Manager):
     """Custom Manager for UserSubscription that returns only live US objects."""
@@ -130,13 +131,13 @@ class ActiveUSManager(models.Manager):
         return super(ActiveUSManager, self).get_query_set().filter(active=True)
 
 class UserSubscription(models.Model):
-    user = models.ForeignKey(auth.models.User)
+    user = models.OneToOneField(auth.models.User, related_name="subscription")
     subscription = models.ForeignKey(Subscription)
     expires = models.DateField(_('expires'))
     active = models.BooleanField(default=True)
 
-    objects = models.Manager()
-    active_objects = ActiveUSManager()
+    all_objects = models.Manager()
+    objects = ActiveUSManager()
 
     grace_timedelta = datetime.timedelta(
         getattr(settings, 'SUBSCRIPTION_GRACE_PERIOD', 2))
@@ -146,14 +147,15 @@ class UserSubscription(models.Model):
     
     def __init__(self, *args, **kwargs):
         super(UserSubscription, self).__init__(*args, **kwargs)
-        
-        if self.subscription.trial_period:
-            self.expires = utils.extend_date_by(
-                                datetime.datetime.now(),
-                                self.subscription.trial_period,
-                                self.subscription.trial_unit)
-        else:
-            self.extend()
+        if self.expires is None:
+            if self.subscription.trial_period:
+                self.expires = utils.extend_date_by(
+                                    datetime.datetime.now(),
+                                    self.subscription.trial_period,
+                                    self.subscription.trial_unit)
+            else:
+                self.expires = datetime.datetime.now()
+                self.extend()
         
     def expired(self):
         """Returns true if there is more than SUBSCRIPTION_GRACE_PERIOD

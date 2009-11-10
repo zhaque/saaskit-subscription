@@ -138,7 +138,7 @@ def subscription_detail(request, object_id, payment_method="standard"):
         #should never get here
         raise Http404
 
-def unsubscribe(request, queryset=UserSubscription.active_objects.all()):
+def unsubscribe(request, queryset=UserSubscription.objects.all()):
     """ find user's subscription and unsubscribe it """
     us = get_object_or_404(queryset, user=request.user)
     us.active = False
