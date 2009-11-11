@@ -4,21 +4,40 @@ from django.conf import settings
 from django.db import models
 from django.contrib import auth
 from django.utils.translation import ugettext as _, ungettext, ugettext_lazy
-from django.db.models.signals import post_init
+from django.db.models.signals import post_init, post_save, pre_delete, pre_save
 
-from paypal.standard import ipn
+from paypal.standard.ipn.models import PayPalIPN 
 
 from subscription import signals, utils
 
 class Transaction(models.Model):
+    
+    EVENT_NEW = 1
+    EVENT_PAYMENT = 2
+    EVENT_PAYMENT_INCORRECT = 3
+    EVENT_PAYMENT_FLAGGED = 4
+    EVENT_REMOVED = 5
+    EVENT_ACTIVATED = 6
+    EVENT_DEACTIVATED = 7
+    
+    EVENTS = (
+        (EVENT_NEW, _('new usersubscription')),
+        (EVENT_PAYMENT, _('subscription payment')),
+        (EVENT_PAYMENT_INCORRECT, _('payment incorrect')),
+        (EVENT_PAYMENT_FLAGGED, _('payment flagged')),
+        (EVENT_REMOVED, _('subscription removed')),
+        (EVENT_ACTIVATED, _('subscription activated')),
+        (EVENT_DEACTIVATED, _('subscription deactivated')),
+    )
+    
     timestamp = models.DateTimeField(auto_now_add=True, editable=False)
     subscription = models.ForeignKey('subscription.Subscription',
                                      null=True, blank=True, editable=False)
-    user = models.ForeignKey(auth.models.User,
-                             null=True, blank=True, editable=False)
-    ipn = models.ForeignKey(ipn.models.PayPalIPN,
-                            null=True, blank=True, editable=False)
-    event = models.CharField(max_length=100, editable=False)
+    user = models.ForeignKey(auth.models.User, null=True, 
+                             blank=True, editable=False)
+    ipn = models.ForeignKey(PayPalIPN, null=True, 
+                            blank=True, editable=False)
+    event = models.PositiveSmallIntegerField(choices=EVENTS, editable=False)
     amount = models.DecimalField(max_digits=64, decimal_places=2,
                                  null=True, blank=True, editable=False)
     comment = models.TextField(blank=True, default='')
@@ -46,7 +65,7 @@ class Subscription(models.Model):
     
     name = models.CharField(max_length=100, unique=True)
     description = models.TextField(blank=True)
-    price = models.DecimalField(_('price'), max_digits=64, decimal_places=2)
+    price = models.DecimalField(_('price'), max_digits=64, decimal_places=2, default=0)
     
     trial_unit = models.CharField(_("trial unit"), max_length=1, 
                                   choices=TIME_UNIT_CHOICES, default='W')
@@ -113,24 +132,14 @@ class Subscription(models.Model):
                 }
         else:
             return _("No trial")
-#===============================================================================
-# 
-# # add User.get_subscription() method
-# def __user_get_subscription(user, default=None):
-#    """find active user's subscription """
-#    try:
-#        return UserSubscription.active_objects.get(user=user).subscription
-#    except UserSubscription.DoesNotExist:
-#        return default
-# auth.models.User.add_to_class('get_subscription', __user_get_subscription)
-#===============================================================================
-
-class ActiveUSManager(models.Manager):
-    """Custom Manager for UserSubscription that returns only live US objects."""
-    def get_query_set(self):
-        return super(ActiveUSManager, self).get_query_set().filter(active=True)
 
 SUBSCRIPTION_GRACE_PERIOD = getattr(settings, 'SUBSCRIPTION_GRACE_PERIOD', 2)
+
+class SubscriptionManager(models.Manager):
+    
+    def subscribe(self, subscription, user):
+        us = UserSubscription.objects.get_or_create(subscription=subscription, user=user)
+        
 
 class UserSubscription(models.Model):
     user = models.OneToOneField(auth.models.User, related_name="subscription")
@@ -138,24 +147,20 @@ class UserSubscription(models.Model):
     expires = models.DateField(_('expires'))
     active = models.BooleanField(default=True)
 
-    #all_objects = models.Manager()
-    #objects = ActiveUSManager()
-
     class Meta:
         unique_together = ( ('user','subscription'), )
     
     def __init__(self, *args, **kwargs):
         super(UserSubscription, self).__init__(*args, **kwargs)
-        if self.expires is None:
-            if self.subscription.trial_period:
-                self.expires = utils.extend_date_by(
-                                    datetime.datetime.now(),
-                                    self.subscription.trial_period,
-                                    self.subscription.trial_unit)
-            else:
-                self.expires = datetime.datetime.now()
-                self.extend()
         
+        if self.expires is None: 
+            period, unit = (self.subscription.trial_period, 
+                            self.subscription.trial_unit) if self.subscription.trial_period \
+                            else (self.subscription.recurrence_period,
+                                self.subscription.recurrence_unit)
+            
+            self.expires = utils.extend_date_by(datetime.datetime.now(), period, unit)
+    
     def expired(self):
         """Returns true if there is more than SUBSCRIPTION_GRACE_PERIOD
         days after expiration date."""
@@ -210,174 +215,17 @@ class UserSubscription(models.Model):
             rv += u' (expired)'
         return rv
 
-
-#===============================================================================
-# def unsubscribe_expired():
-#    """Unsubscribes all users whose subscription has expired.
-# 
-#    Loops through all UserSubscription objects with `expires' field
-#    earlier than datetime.date.today() and forces correct group
-#    membership."""
-#    for us in UserSubscription.objects.get(expires__lt=datetime.date.today()):
-#        us.active = False
-#===============================================================================
-
-#### Handle PayPal signals
-
-def _ipn_usersubscription(payment):
-    class PseudoUS(object):
-        pk = None
-        def __nonzero__(self): return False
-        def __init__(self, user, subscription):
-            self.user = user
-            self.subscription = subscription
-
-    try: s = Subscription.objects.get(id=payment.item_number)
-    except Subscription.DoesNotExist: s = None
-
-    try: u = auth.models.User.objects.get(id=payment.custom)
-    except auth.models.User.DoesNotExist: u = None
-
-    if u and s:
-        try: us = UserSubscription.objects.get(subscription=s, user=u)
-        except UserSubscription.DoesNotExist:
-            us = UserSubscription(user=u, subscription=s, active=False)
-            Transaction(user=u, subscription=s, ipn=payment,
-                        event='new usersubscription', amount=payment.mc_gross
-                        ).save()
-    else: us = PseudoUS(user=u,subscription=s) 
-
-    return us
-
-def handle_payment_was_successful(sender, **kwargs):
-    us = _ipn_usersubscription(sender)
-    u, s = us.user, us.subscription
-    if us:
-        if not s.recurrence_unit:
-            if sender.mc_gross == s.price:
-                us.expires = None
-                us.active = True
-                us.save()
-                Transaction(user=u, subscription=s, ipn=sender,
-                            event='one-time payment', amount=sender.mc_gross
-                            ).save()
-                signals.signed_up.send(s, ipn=sender, subscription=s, user=u,
-                                       usersubscription=us)
-            else:
-                Transaction(user=u, subscription=s, ipn=sender,
-                            event='incorrect payment', amount=sender.mc_gross
-                            ).save()
-                signals.event.send(s, ipn=sender, subscription=s, user=u,
-                                   usersubscription=us, event='incorrect payment')
-        else:
-            if sender.mc_gross == s.price:
-                us.extend()
-                us.save()
-                Transaction(user=u, subscription=s, ipn=sender,
-                            event='subscription payment', amount=sender.mc_gross
-                            ).save()
-                signals.paid.send(s, ipn=sender, subscription=s, user=u,
-                                  usersubscription=us)
-            else:
-                Transaction(user=u, subscription=s, ipn=sender,
-                            event='incorrect payment', amount=sender.mc_gross
-                            ).save()
-                signals.event.send(s, ipn=sender, subscription=s, user=u,
-                                   usersubscription=us, event='incorrect payment')
-    else:
-        Transaction(user=u, subscription=s, ipn=sender,
-                    event='unexpected payment', amount=sender.mc_gross
-                    ).save()
-        signals.event.send(s, ipn=sender, subscription=s, user=u, event='unexpected_payment')
-ipn.signals.payment_was_successful.connect(handle_payment_was_successful)
-
-def handle_payment_was_flagged(sender, **kwargs):
-    us = _ipn_usersubscription(sender)
-    u, s = us.user, us.subscription
-    Transaction(user=u, subscription=s, ipn=sender,
-                event='payment flagged', amount=sender.mc_gross
-                ).save()
-    signals.event.send(s, ipn=sender, subscription=s, user=u, event='flagged')
-ipn.signals.payment_was_flagged.connect(handle_payment_was_flagged)
-
-def handle_subscription_signup(sender, **kwargs):
-    us = _ipn_usersubscription(sender)
-    u, s = us.user, us.subscription
-    if us:
-        # deactivate or delete all user's other subscriptions
-        for old_us in u.usersubscription_set.all():
-            if old_us==us: continue     # don't touch current subscription
-            
-            old_us.active = False
-            old_us.save()
-            Transaction(user=u, subscription=s, ipn=sender,
-                        event='deactivated', amount=sender.mc_gross
-                        ).save()
-
-        # activate new subscription
-        us.active = True
-        us.save()
-        Transaction(user=u, subscription=s, ipn=sender,
-                    event='activated', amount=sender.mc_gross
-                    ).save()
-
-        signals.subscribed.send(s, ipn=sender, subscription=s, user=u,
-                                usersubscription=us)
-    else:
-        Transaction(user=u, subscription=s, ipn=sender,
-                    event='unexpected subscription', amount=sender.mc_gross
-                    ).save()
-        signals.event.send(s, ipn=sender, subscription=s, user=u,
-                           event='unexpected_subscription')
-ipn.signals.subscription_signup.connect(handle_subscription_signup)
-
-def handle_subscription_cancel(sender, **kwargs):
-    us = _ipn_usersubscription(sender)
-    u, s = us.user, us.subscription
-    if us.pk is not None:
+def delete_expired():
+    """Unsubscribes all users whose subscription has expired."""
+    for us in UserSubscription.objects.get(expires__lte=datetime.datetime.now()):
         us.delete()
-        Transaction(user=u, subscription=s, ipn=sender,
-                    event='remove subscription (cancelled)', amount=sender.mc_gross
-                    ).save()
-        signals.unsubscribed.send(s, ipn=sender, subscription=s, user=u,
-                                  usersubscription=us,
-                                  reason='cancel')
-    else:
-        Transaction(user=u, subscription=s, ipn=sender,
-                    event='unexpected cancel', amount=sender.mc_gross
-                    ).save()
-        signals.event.send(s, ipn=sender, subscription=s, user=u, event='unexpected_cancel')
-ipn.signals.subscription_cancel.connect(handle_subscription_cancel)
-ipn.signals.subscription_eot.connect(handle_subscription_cancel)
+        Transaction(user=u, subscription=s, event=Transaction.EVENT_REMOVED).save()
 
-def handle_subscription_modify(sender, **kwargs):
-    us = _ipn_usersubscription(sender)
-    u, s = us.user, us.subscription
-    
-    if us:
-        # delete all user's other subscriptions
-        for old_us in u.usersubscription_set.all():
-            if old_us == us: continue     # don't touch current subscription
-            
-            #old_us.delete()
-            old_us.active = False
-            Transaction(user=u, subscription=s, ipn=sender,
-                        event='remove subscription (deactivated)', amount=sender.mc_gross
-                        ).save()
-
-        # activate new subscription
-        us.active = True
-        us.save()
-        Transaction(user=u, subscription=s, ipn=sender,
-                    event='activated', amount=sender.mc_gross
-                    ).save()
-
-        signals.subscribed.send(s, ipn=sender, subscription=s, user=u,
-                                usersubscription=us)
-    else:
-        Transaction(user=u, subscription=u, ipn=sender,
-                    event='unexpected subscription modify', amount=sender.mc_gross
-                    ).save()
-        signals.event.send(s, ipn=sender, subscription=s, user=u,
-                           event='unexpected_subscription_modify')
-ipn.signals.subscription_modify.connect(handle_subscription_modify)
+def delete_existent_subscription(instance, **kwargs):
+    """Every user must have only one subscription. Find existent and delete it."""
+    queryset = UserSubscription.objects.filter(user=instance.user)
+    if instance.pk:
+        queryset = queryset.exclude(id=instance.id)
+    queryset.delete()
+#Better use post_init, but we can not do it because of recursion
+#pre_save.connect(delete_existent_subscription, sender=UserSubscription)

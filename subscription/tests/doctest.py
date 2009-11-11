@@ -10,11 +10,9 @@ Create test user
 >>> from django.contrib.auth.models import User
 >>> test_user = User.objects.create_user('test_user', 'test@example.com', 'testpw')
 
-User's subscription
+User's subscription. By default every user has free subscription after adding
 >>> test_user.subscription
-Traceback (most recent call last):
-...
-DoesNotExist: UserSubscription matching query does not exist.
+<UserSubscription: test_user's Free Membership>
 
 Subscribe our test user to silver plan
 >>> us = UserSubscription.objects.create(user=test_user, subscription=silver)
