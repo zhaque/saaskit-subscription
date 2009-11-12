@@ -28,6 +28,11 @@ class ClientTest(TransactionTestCase):
         #firstly, check existence in settings parameter MIDDLEWARE_CLASSES
         self.assertTrue('subscription.middleware.SubscriptionMiddleware' in settings.MIDDLEWARE_CLASSES)
         
+        #non-authnticated user
+        response = self.client.get('/')
+        self.assertEqual(response.status_code, 200)
+        
+        #create and authenticate user
         test_user = User.objects.create_user('testuser', 'test@example.com', 'testpw')
         self.client.login(username=test_user.username, password='testpw')
         

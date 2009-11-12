@@ -94,4 +94,10 @@ class ModelTest(TestCase):
         self.assertEquals(self.free_user.get_all_permissions(), set([]))
         self.assertEquals(self.silver_user.get_all_permissions(), set([u'subscription.test']))
         
+        #deactivate subscription
+        self.silver_user.subscription.active = False
+        self.silver_user.subscription.save()
+        
+        self.silver_user = User.objects.get(username='silver_user')
+        self.assertEquals(self.silver_user.get_all_permissions(), set([]))
         
