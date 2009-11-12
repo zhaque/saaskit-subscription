@@ -91,8 +91,7 @@ def subscription_detail(request, object_id, payment_method="standard"):
     s = get_object_or_404(Subscription, id=object_id)
 
     try:
-        us = request.user.usersubscription_set.get(
-            active=True)
+        us = request.user.subscription
     except UserSubscription.DoesNotExist:
         change_denied_reasons = None
         us = None
@@ -105,11 +104,6 @@ def subscription_detail(request, object_id, payment_method="standard"):
         form = _paypal_form(s, request.user,
                             upgrade_subscription=(us is not None) and (us.subscription<>s))
 
-    try:
-        s_us = request.user.usersubscription_set.get(subscription=s)
-    except UserSubscription.DoesNotExist:
-        s_us = None
-        
     from subscription.providers import PaymentMethodFactory
     # See PROPOSALS section in providers.py
     if payment_method == "pro":
@@ -131,7 +125,7 @@ def subscription_detail(request, object_id, payment_method="standard"):
     
     elif payment_method == 'standard':
         return direct_to_template(request, template='subscription/subscription_detail.html',\
-                                  extra_context=dict(object=s, usersubscription=s_us,\
+                                  extra_context=dict(object=s, usersubscription=us,\
                                   change_denied_reasons=change_denied_reasons,\
                                   form=form, cancel_url=cancel_url))
     else:
