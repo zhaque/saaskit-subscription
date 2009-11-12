@@ -1,67 +1,97 @@
 ### -*- coding: utf-8 -*- ####################################################
-#
-# Copyright (c) 2009 Arvid Paeglit. All Rights Reserved.
-#
-##############################################################################
-"""
-$Id:interfaces.py 11316 2008-05-19 12:07:19Z arvid $
-"""
 
 from datetime import datetime, date, timedelta
+import calendar
 
+from django.conf import settings
 from django.contrib.auth.models import User
-from django.test import TestCase, TransactionTestCase
-from django.core.exceptions import ValidationError
-from django.core.urlresolvers import reverse
+from django.test import TransactionTestCase, TestCase
+#from django.core.exceptions import ValidationError
+#from django.core.urlresolvers import reverse
 
-from bill import NotEnoughMoney
+from django.contrib.auth.models import Permission
+from django.contrib.contenttypes.models import ContentType
 
-from trade.models import Product, PlumbLine, WorkFlow
-from trade.engine import check_plumblines_status
+from subscription.models import Subscription, UserSubscription, Transaction
 
-class ModelTest(TransactionTestCase):
-    fixtures = ['test_trade.json']
+class ModelTest(TestCase):
+    fixtures = ['test_subscription.json']
     
     def setUp(self):
-        self.user = User.objects.get(username='testusername')
+        #self.user = User.objects.get(username='test_user')
+        #self.client.login(username=self.user.username, password='test')
         
-        self.product = Product.objects.get(slug='dazhe-ne-znayu-chto-eto')
+        self.free_sub = Subscription.objects.get(id=1)
+        self.silver_sub = Subscription.objects.get(id=2)
         
-        check_plumblines_status()
-        
-        self.active_pl = PlumbLine.objects.get(status='active')
-        self.future_pl = PlumbLine.objects.get(status='future')
-        self.finished_pl = PlumbLine.objects.get(status='finished')
-        
+        self.test_user = User.objects.get(id=1)
+        self.free_user = User.objects.get(username='free_user')
+        self.silver_user = User.objects.get(username='silver_user')
+    
     def tearDown(self):
         pass
     
-    def test_activate(self):
-        self.assertRaises(ValidationError, self.active_pl.activate)
-        self.assertRaises(ValidationError, self.finished_pl.activate)
-        
-        self.future_pl.activate()
-        self.assertEqual(self.future_pl.status, self.future_pl.STATUS_ACTIVE)
-        
-    def test_finish(self):
-        self.assertRaises(ValidationError, self.future_pl.finish)
-        self.assertRaises(ValidationError, self.finished_pl.finish)
-        
-        self.active_pl.finish()
-        self.assertEqual(self.active_pl.status, self.active_pl.STATUS_FINISHED)
+    def test_user_subscription(self):
+        """ get 'subscription' attribute from all users"""
+        #this user has no subscription
+        self.assertRaises(UserSubscription.DoesNotExist, lambda : self.test_user.subscription)
     
-    def test_bidding_without_money(self):
+        #free subscription
+        self.assertEqual(self.free_user.subscription.subscription, self.free_sub)
         
-        for i in range(16):
-            self.active_pl.bid(self.user)
+        #silver one
+        self.assertEqual(self.silver_user.subscription.subscription, self.silver_sub)
+    
+    def test_get_initial_subscription(self):
+        """ do test_user's subscription """
+        us = self.free_sub.subscribe(self.test_user)
         
-        latest_bid = WorkFlow.objects.filter(author=self.user, event='bid', 
-                                             plumb_line=self.active_pl).latest('date')
+        self.assertEqual(us.user, self.test_user)
+        self.assertEqual(us.subscription, self.free_sub)
         
-        #user had 50.00 funds, and one bid costs 3.00, so 16*3 = 48 - successful bids, and 17s is not.
-        self.assertRaises(NotEnoughMoney, lambda : self.active_pl.bid(self.user) )
+        self.assertEqual(self.test_user.subscription.subscription, self.free_sub)
+    
+    def test_change_subscription(self):
+        """ do change free_user's subscription """
+        us = self.silver_sub.subscribe(self.free_user)
         
-        #We must check that new Workflow instance has not created
-        self.assertEqual(latest_bid, WorkFlow.objects.filter(author=self.user, 
-                                    event='bid', plumb_line=self.active_pl).latest('date'))
+        self.assertEqual(us.user, self.free_user)
+        self.assertEqual(us.subscription, self.silver_sub)
+        
+        self.assertEqual(self.free_user.subscription.subscription, self.silver_sub)
+    
+    def test_expiration_initial(self):
+        """ check expiration dates, passed by initialization """
+        #free plan has 10 year recurrence period
+        self.assertEqual(self.free_user.subscription.expires.year, date.today().year + 10)
+        
+        #silver plan has 30 days recurrence repiod
+        self.assertEqual(self.silver_user.subscription.expires, date.today() + timedelta(30))
+    
+    def test_permissions(self):
+        """ test permission related functionality """
+        #Firstly, check backend. 
+        #We use special backend, he extend default ModelBackend by subscription's permissions
+        self.assertTrue('subscription.backends.UserSubscriptionBackend' in settings.AUTHENTICATION_BACKENDS)
+        
+        #We didn't set any special permissions in our subscriptions
+        #test_user did'nt subscribed, so, he shouldn't have any permissions
+        self.assertEquals(self.test_user.get_all_permissions(), set([]))
+        #free and silver plans have not passed any specific permissions 
+        self.assertEquals(self.free_user.get_all_permissions(), set([]))
+        self.assertEquals(self.silver_user.get_all_permissions(), set([]))
+        
+        #Add some permission to silver plan
+        perm = Permission.objects.create(name="test", 
+                                         content_type=ContentType.objects.get(name="subscription"), 
+                                         codename="test")
+        self.silver_sub.permissions.add(perm)
+        self.silver_sub.save()
+        
+        #test_user did'nt subscribed, so, he shouldn't have any permissions
+        self.assertEquals(self.test_user.get_all_permissions(), set([]))
+        #free plan was not changed
+        self.assertEquals(self.free_user.get_all_permissions(), set([]))
+        self.assertEquals(self.silver_user.get_all_permissions(), set([u'subscription.test']))
+        
         

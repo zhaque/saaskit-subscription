@@ -1,3 +1,5 @@
+### -*- coding: utf-8 -*- ####################################################
+
 import datetime
 
 from django.conf import settings
@@ -132,24 +134,34 @@ class Subscription(models.Model):
                 }
         else:
             return _("No trial")
-
-SUBSCRIPTION_GRACE_PERIOD = getattr(settings, 'SUBSCRIPTION_GRACE_PERIOD', 2)
-
-class SubscriptionManager(models.Manager):
     
-    def subscribe(self, subscription, user):
-        us = UserSubscription.objects.get_or_create(subscription=subscription, user=user)
-        
+    def subscribe(self, user):
+        #if user has current subscription we return itself
+        try:
+            current = self.user_subscriptions.get(user=user)
+        except self.user_subscriptions.model.DoesNotExist:
+            #delete existing subscription
+            UserSubscription.objects.filter(user=user).delete()
+            
+            return self.user_subscriptions.create(user=user, subscription=self)
+        else:
+            if not current.active:
+                current.active = True
+                current.save()
+            return current
+
+    
+SUBSCRIPTION_GRACE_PERIOD = getattr(settings, 'SUBSCRIPTION_GRACE_PERIOD', 2)
 
 class UserSubscription(models.Model):
     user = models.OneToOneField(auth.models.User, related_name="subscription")
-    subscription = models.ForeignKey(Subscription)
+    subscription = models.ForeignKey(Subscription, related_name="user_subscriptions")
     expires = models.DateField(_('expires'))
     active = models.BooleanField(default=True)
 
     class Meta:
         unique_together = ( ('user','subscription'), )
-    
+        
     def __init__(self, *args, **kwargs):
         super(UserSubscription, self).__init__(*args, **kwargs)
         
@@ -220,12 +232,3 @@ def delete_expired():
     for us in UserSubscription.objects.get(expires__lte=datetime.datetime.now()):
         us.delete()
         Transaction(user=u, subscription=s, event=Transaction.EVENT_REMOVED).save()
-
-def delete_existent_subscription(instance, **kwargs):
-    """Every user must have only one subscription. Find existent and delete it."""
-    queryset = UserSubscription.objects.filter(user=instance.user)
-    if instance.pk:
-        queryset = queryset.exclude(id=instance.id)
-    queryset.delete()
-#Better use post_init, but we can not do it because of recursion
-#pre_save.connect(delete_existent_subscription, sender=UserSubscription)

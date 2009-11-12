@@ -1,0 +1,26 @@
+[{"pk": 1, "model": "auth.user", "fields": {"username": "test_user", "is_active": true, "is_superuser": false, "is_staff": false, "password": "sha1$a75af$7b2c7b5e7ac635e80477fece6291508d6af30b9d", "email": ""}},
+ {"pk": 2, "model": "auth.user", "fields": {"username": "free_user", "is_active": true, "is_superuser": false, "is_staff": false, "password": "sha1$a75af$7b2c7b5e7ac635e80477fece6291508d6af30b9d", "email": ""}},
+ {"pk": 3, "model": "auth.user", "fields": {"username": "silver_user", "is_active": true, "is_superuser": false, "is_staff": false, "password": "sha1$a75af$7b2c7b5e7ac635e80477fece6291508d6af30b9d", "email": ""}},
+ {"pk": 1, "model": "subscription.subscription", 
+	 "fields": {
+	 	"name": "Free Membership", 
+	 	"description": "Free membership", 
+	 	"recurrence_unit": "Y", 
+	 	"recurrence_period": 10, 
+	 	"permissions": []
+	 }
+ },
+ {"pk": 2, "model": "subscription.subscription", 
+	 "fields": {
+	 	"name": "Silver Membership", 
+	 	"price": "17", 
+	 	"description": "", 
+	 	"recurrence_unit": "D", 
+	 	"recurrence_period": 30, 
+	 	"permissions": []
+	 }
+ },
+ 
+ {"pk": 1, "model": "subscription.usersubscription", "fields": {"user": 2, "subscription": 1}},
+ {"pk": 2, "model": "subscription.usersubscription", "fields": {"user": 3, "subscription": 2}}
+]

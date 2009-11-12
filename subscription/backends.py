@@ -10,10 +10,13 @@ class UserSubscriptionBackend(ModelBackend):
     """
     def get_all_permissions(self, user_obj):
         perm_cache = super(UserSubscriptionBackend, self).get_all_permissions(user_obj)
-        if user_obj.subscription.active:
-            try:
+        try:
+            us = user_obj.subscription
+        except UserSubscription.DoesNotExist:
+            pass
+        else:
+            if us.active:
                 perm_cache.update(set([u"%s.%s" % (p.content_type.app_label, p.codename) 
-                            for p in user_obj.subscription.subscription.permissions.select_related()]))
-            except UserSubscription.DoesNotExist:
-                pass
+                                       for p in us.subscription.permissions.select_related()]))
+        
         return perm_cache
