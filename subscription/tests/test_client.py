@@ -37,5 +37,5 @@ class ClientTest(TransactionTestCase):
         self.client.login(username=test_user.username, password='testpw')
         
         response = self.client.get('/')
-        self.assertRedirects(response, reverse('subscription_list'), target_status_code=302)
+        self.assertRedirects(response, reverse('subscription_list'))
         
