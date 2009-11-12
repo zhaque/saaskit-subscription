@@ -8,7 +8,7 @@ from subscription.models import UserSubscription
 class SubscriptionMiddleware(object):
     
     def process_request(self, request):
-        if request.user.is_authenticated() and request.path != reverse('subscription_list'):
+        if request.user.is_authenticated() and not request.path.startswith(reverse('subscription_list')):
             try:
                 sub = request.user.subscription
             except UserSubscription.DoesNotExist:
