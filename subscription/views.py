@@ -16,39 +16,14 @@ from subscription.models import Subscription, UserSubscription
 from subscription.providers import PaymentMethodFactory
 from subscription.forms import _paypal_form
 
-# http://paypaldeveloper.com/pdn/board/message?board.id=basicpayments&message.id=621
-if settings.PAYPAL_TEST:
-    cancel_url = 'https://www.sandbox.paypal.com/cgi-bin/webscr?cmd=_subscr-find&alias=%s' \
-                    % urllib.quote(settings.PAYPAL_RECEIVER_EMAIL)
-else:
-    cancel_url = 'https://www.paypal.com/cgi-bin/webscr?cmd=_subscr-find&alias=%s' \
-                    % urllib.quote(settings.PAYPAL_RECEIVER_EMAIL)
-
 # https://cms.paypal.com/us/cgi-bin/?cmd=_render-content&content_ID=developer/e_howto_html_Appx_websitestandard_htmlvariables
 
 @login_required
 def subscription_standard_ipn(request, object_id, queryset=Subscription.objects.filter(price__gt=0), 
                         template_name='subscription/subscription_detail.html'):
     s = get_object_or_404(queryset, id=object_id)
-    
-    try:
-        us = request.user.subscription
-    except UserSubscription.DoesNotExist:
-        change_denied_reasons = None
-        us = None
-    else:
-        change_denied_reasons = us.try_change(s)
-
-    if change_denied_reasons:
-        form = None
-    else:
-        form = _paypal_form(s, request.user,
-                            upgrade_subscription=(us is not None) and (us.subscription != s))
-    
     return direct_to_template(request, template=template_name,
-                  extra_context={'object': s, 'usersubscription': (us and us.subscription==s),
-                                 'change_denied_reasons': change_denied_reasons,
-                                 'form': form, 'cancel_url': cancel_url})
+                              extra_context={'object': s})
 
 @login_required
 def subscription_pro(request, object_id, queryset=Subscription.objects.filter(price__gt=0)):

@@ -52,7 +52,7 @@ def _paypal_form(subscription, user, upgrade_subscription=False):
                 src=1,                  # make payments recur
                 sra=1,            # reattempt payment on payment error
                 upgrade_subscription=upgrade_subscription,
-                modify=upgrade_subscription and 2 or 0, # subscription modification (upgrade/downgrade)
+                modify=upgrade_subscription and 1 or 0, # subscription modification (upgrade/downgrade)
                 **trial),
             button_type='subscribe'
             )

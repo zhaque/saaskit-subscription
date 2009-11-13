@@ -9,6 +9,7 @@ def _trial(sub): return sub.get_trial_display()
 
 class SubscriptionAdmin(admin.ModelAdmin):
     list_display = ('name', _pricing, _trial)
+    filter_horizontal = ('permissions',)
 admin.site.register(Subscription, SubscriptionAdmin)
 
 def _subscription(trans):

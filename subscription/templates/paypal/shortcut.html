@@ -1,0 +1,19 @@
+{% if current %}
+  {% if not current.active %}
+    {{ form.sandbox }}
+  {% else %}
+    <a href="{{ cancel_url }}"> <img src="{{ image_url }}"></a>
+  {% endif %}
+{% else %}
+  {% if change_denied_reasons %}
+    <p><strong>You cannot switch to this plan.</strong> Reasons:
+    <ul>
+    {% for reason in change_denied_reasons %}
+      <li>{{ reason }}</li>
+    {% endfor %}
+    </ul>
+  {% else %}
+    {{ form.sandbox }}
+  {% endif %}
+
+{% endif %}
