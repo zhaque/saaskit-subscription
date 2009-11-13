@@ -46,7 +46,7 @@ def subscription_standard_ipn(request, object_id, queryset=Subscription.objects.
                             upgrade_subscription=(us is not None) and (us.subscription != s))
     
     return direct_to_template(request, template=template_name,
-                  extra_context={'object': s, 'usersubscription': (us.subscription==s),
+                  extra_context={'object': s, 'usersubscription': (us and us.subscription==s),
                                  'change_denied_reasons': change_denied_reasons,
                                  'form': form, 'cancel_url': cancel_url})
 
