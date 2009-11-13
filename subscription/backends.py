@@ -15,8 +15,7 @@ class UserSubscriptionBackend(ModelBackend):
         except UserSubscription.DoesNotExist:
             pass
         else:
-            if us.active:
-                perm_cache.update(set([u"%s.%s" % (p.content_type.app_label, p.codename) 
-                                       for p in us.subscription.permissions.select_related()]))
+            perm_cache.update(set([u"%s.%s" % (p.content_type.app_label, p.codename) 
+                                   for p in us.subscription.permissions.select_related()]))
         
         return perm_cache

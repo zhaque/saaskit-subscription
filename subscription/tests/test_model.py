@@ -21,12 +21,12 @@ class ModelTest(TestCase):
         #self.user = User.objects.get(username='test_user')
         #self.client.login(username=self.user.username, password='test')
         
-        self.free_sub = Subscription.objects.get(id=1)
-        self.silver_sub = Subscription.objects.get(id=2)
+        self.silver_sub = Subscription.objects.get(id=1)
+        self.gold_sub = Subscription.objects.get(id=2)
         
         self.test_user = User.objects.get(id=1)
-        self.free_user = User.objects.get(username='free_user')
         self.silver_user = User.objects.get(username='silver_user')
+        self.gold_user = User.objects.get(username='gold_user')
     
     def tearDown(self):
         pass
@@ -36,37 +36,37 @@ class ModelTest(TestCase):
         #this user has no subscription
         self.assertRaises(UserSubscription.DoesNotExist, lambda : self.test_user.subscription)
     
-        #free subscription
-        self.assertEqual(self.free_user.subscription.subscription, self.free_sub)
-        
-        #silver one
+        #silver subscription
         self.assertEqual(self.silver_user.subscription.subscription, self.silver_sub)
+        
+        #gold one
+        self.assertEqual(self.gold_user.subscription.subscription, self.gold_sub)
     
     def test_get_initial_subscription(self):
         """ do test_user's subscription """
-        us = self.free_sub.subscribe(self.test_user)
+        us = self.silver_sub.subscribe(self.test_user)
         
         self.assertEqual(us.user, self.test_user)
-        self.assertEqual(us.subscription, self.free_sub)
-        
-        self.assertEqual(self.test_user.subscription.subscription, self.free_sub)
-    
-    def test_change_subscription(self):
-        """ do change free_user's subscription """
-        us = self.silver_sub.subscribe(self.free_user)
-        
-        self.assertEqual(us.user, self.free_user)
         self.assertEqual(us.subscription, self.silver_sub)
         
-        self.assertEqual(self.free_user.subscription.subscription, self.silver_sub)
+        self.assertEqual(self.test_user.subscription.subscription, self.silver_sub)
+    
+    def test_change_subscription(self):
+        """ do change silver_user's subscription """
+        us = self.gold_sub.subscribe(self.silver_user)
+        
+        self.assertEqual(us.user, self.silver_user)
+        self.assertEqual(us.subscription, self.gold_sub)
+        
+        self.assertEqual(self.silver_user.subscription.subscription, self.gold_sub)
     
     def test_expiration_initial(self):
         """ check expiration dates, passed by initialization """
-        #free plan has 10 year recurrence period
-        self.assertEqual(self.free_user.subscription.expires.year, date.today().year + 10)
+        #silver plan has 21 day trial period
+        self.assertEqual(self.silver_user.subscription.expires, date.today() + timedelta(21))
         
-        #silver plan has 30 days recurrence repiod
-        self.assertEqual(self.silver_user.subscription.expires, date.today() + timedelta(30))
+        #gold plan has 30 days recurrence repiod
+        self.assertEqual(self.gold_user.subscription.expires, date.today() + timedelta(30))
     
     def test_permissions(self):
         """ test permission related functionality """
@@ -77,27 +77,29 @@ class ModelTest(TestCase):
         #We didn't set any special permissions in our subscriptions
         #test_user did'nt subscribed, so, he shouldn't have any permissions
         self.assertEquals(self.test_user.get_all_permissions(), set([]))
-        #free and silver plans have not passed any specific permissions 
-        self.assertEquals(self.free_user.get_all_permissions(), set([]))
+        #silver and gold plans have not passed any specific permissions 
         self.assertEquals(self.silver_user.get_all_permissions(), set([]))
+        self.assertEquals(self.gold_user.get_all_permissions(), set([]))
         
-        #Add some permission to silver plan
+        #Add some permission to gold plan
         perm = Permission.objects.create(name="test", 
                                          content_type=ContentType.objects.get(name="subscription"), 
                                          codename="test")
-        self.silver_sub.permissions.add(perm)
-        self.silver_sub.save()
+        self.gold_sub.permissions.add(perm)
+        self.gold_sub.save()
         
         #test_user did'nt subscribed, so, he shouldn't have any permissions
         self.assertEquals(self.test_user.get_all_permissions(), set([]))
-        #free plan was not changed
-        self.assertEquals(self.free_user.get_all_permissions(), set([]))
-        self.assertEquals(self.silver_user.get_all_permissions(), set([u'subscription.test']))
+        #silver plan was not changed
+        self.assertEquals(self.silver_user.get_all_permissions(), set([]))
+        self.assertEquals(self.gold_user.get_all_permissions(), set([u'subscription.test']))
         
         #deactivate subscription
-        self.silver_user.subscription.active = False
-        self.silver_user.subscription.save()
+        self.gold_user.subscription.active = False
+        self.gold_user.subscription.save()
         
-        self.silver_user = User.objects.get(username='silver_user')
-        self.assertEquals(self.silver_user.get_all_permissions(), set([]))
+        #gold user must have his permissions anyway before his billing cycle ends. 
+        
+        self.gold_user = User.objects.get(username='gold_user')
+        self.assertEquals(self.gold_user.get_all_permissions(), set([u'subscription.test']))
         

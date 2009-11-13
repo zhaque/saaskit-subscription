@@ -3,12 +3,9 @@ from django.dispatch import Signal
 ## Our signals
 
 # recurring subscriptions
-subscribed = Signal()
-unsubscribed = Signal()
-paid = Signal()
-
-# misc. subscription-related events
-event = Signal()
+subscribed = Signal(providing_args=["payment"])
+unsubscribed = Signal(providing_args=["payment"])
+paid = Signal(providing_args=["payment"])
 
 # upgrade/downgrade possibility check
 change_check = Signal()

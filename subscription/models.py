@@ -20,16 +20,16 @@ class Transaction(models.Model):
     EVENT_PAYMENT_FLAGGED = 4
     EVENT_REMOVED = 5
     EVENT_ACTIVATED = 6
-    EVENT_DEACTIVATED = 7
+    EVENT_CANCELLED = 7
     
     EVENTS = (
-        (EVENT_NEW, _('new usersubscription')),
-        (EVENT_PAYMENT, _('subscription payment')),
+        (EVENT_NEW, _('new subscription')),
+        (EVENT_PAYMENT, _('payment')),
         (EVENT_PAYMENT_INCORRECT, _('payment incorrect')),
         (EVENT_PAYMENT_FLAGGED, _('payment flagged')),
-        (EVENT_REMOVED, _('subscription removed')),
-        (EVENT_ACTIVATED, _('subscription activated')),
-        (EVENT_DEACTIVATED, _('subscription deactivated')),
+        (EVENT_REMOVED, _('removed')),
+        (EVENT_ACTIVATED, _('activated')),
+        (EVENT_CANCELLED, _('cancelled')),
     )
     
     timestamp = models.DateTimeField(auto_now_add=True, editable=False)
@@ -138,17 +138,19 @@ class Subscription(models.Model):
     def subscribe(self, user):
         #if user has current subscription we return itself
         try:
-            current = self.user_subscriptions.get(user=user)
+            existent = UserSubscription.objects.get(user=user)
         except self.user_subscriptions.model.DoesNotExist:
-            #delete existing subscription
-            UserSubscription.objects.filter(user=user).delete()
-            
             return self.user_subscriptions.create(user=user, subscription=self)
         else:
-            if not current.active:
-                current.active = True
-                current.save()
-            return current
+            if existent.subscription != self:
+                existent.subscription = self
+                existent.save()
+            
+            if not existent.active:
+                existent.active = True
+                existent.save()
+                
+            return existent
 
     
 SUBSCRIPTION_GRACE_PERIOD = getattr(settings, 'SUBSCRIPTION_GRACE_PERIOD', 2)
@@ -180,20 +182,17 @@ class UserSubscription(models.Model):
         return self.expires is not None and (
             self.expires + grace_timedelta < datetime.date.today() )
     expired.boolean = True
-
+    
     def extend(self, timedelta=None):
         """Extend subscription by `timedelta' or by subscription's
         recurrence period."""
         if timedelta is not None:
             self.expires += timedelta
         else:
-            if self.subscription.recurrence_unit:
-                self.expires = utils.extend_date_by(
-                    self.expires,
-                    self.subscription.recurrence_period,
-                    self.subscription.recurrence_unit)
-            else:
-                self.expires = None
+            self.expires = utils.extend_date_by(
+                            self.expires,
+                            self.subscription.recurrence_period,
+                            self.subscription.recurrence_unit)
 
     def try_change(self, subscription):
         """Check whether upgrading/downgrading to `subscription' is possible.
