@@ -123,6 +123,18 @@ class Subscription(models.Model):
                 }
         else: return _('%(price).02f one-time fee') % { 'price':self.price }
 
+    def get_recurrence_display(self):
+        if self.recurrence_period:
+            return ungettext('One %(unit)s',
+                             '%(period)d %(unit_plural)s',
+                             self.recurrence_period) % {
+                'unit':self.get_recurrence_unit_display().lower(),
+                'unit_plural':_(self._PLURAL_UNITS[self.recurrence_unit],),
+                'period':self.recurrence_period,
+                }
+        else:
+            return _("No recurrence")
+    
     def get_trial_display(self):
         if self.trial_period:
             return ungettext('One %(unit)s',
@@ -151,7 +163,6 @@ class Subscription(models.Model):
                 existent.save()
                 
             return existent
-
     
 SUBSCRIPTION_GRACE_PERIOD = getattr(settings, 'SUBSCRIPTION_GRACE_PERIOD', 2)
 
