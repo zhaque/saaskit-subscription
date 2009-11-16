@@ -14,22 +14,24 @@ from subscription import signals, utils
 
 class Transaction(models.Model):
     
-    EVENT_NEW = 1
+    EVENT_SUBSCRIBED = 1
     EVENT_PAYMENT = 2
     EVENT_PAYMENT_INCORRECT = 3
-    EVENT_PAYMENT_FLAGGED = 4
+    #EVENT_PAYMENT_FLAGGED = 4
     EVENT_REMOVED = 5
     EVENT_ACTIVATED = 6
     EVENT_CANCELLED = 7
+    EVENT_RECURED = 8
     
     EVENTS = (
-        (EVENT_NEW, _('new subscription')),
+        (EVENT_SUBSCRIBED, _('subscribed')),
         (EVENT_PAYMENT, _('payment')),
         (EVENT_PAYMENT_INCORRECT, _('payment incorrect')),
-        (EVENT_PAYMENT_FLAGGED, _('payment flagged')),
+        #(EVENT_PAYMENT_FLAGGED, _('payment flagged')),
         (EVENT_REMOVED, _('removed')),
         (EVENT_ACTIVATED, _('activated')),
         (EVENT_CANCELLED, _('cancelled')),
+        (EVENT_RECURED, _('recured')),
     )
     
     timestamp = models.DateTimeField(auto_now_add=True, editable=False)
@@ -148,19 +150,19 @@ class Subscription(models.Model):
             return _("No trial")
     
     def subscribe(self, user):
-        #if user has current subscription we return itself
         try:
             existent = UserSubscription.objects.get(user=user)
         except self.user_subscriptions.model.DoesNotExist:
-            return self.user_subscriptions.create(user=user, subscription=self)
+            us = self.user_subscriptions.create(user=user, subscription=self)
+            signals.subscribed.send(us)
+            return us
         else:
             if existent.subscription != self:
                 existent.subscription = self
                 existent.save()
+                signals.subscribed.send(existent)
             
-            if not existent.active:
-                existent.active = True
-                existent.save()
+            existent.activate()
                 
             return existent
     
@@ -204,7 +206,21 @@ class UserSubscription(models.Model):
                             self.expires,
                             self.subscription.recurrence_period,
                             self.subscription.recurrence_unit)
-
+        self.save()
+        signals.recured.send(self)
+        
+    def activate(self):
+        if not self.active:
+            self.active = True
+            self.save()
+            signals.activated.send(self)
+    
+    def cancel(self):
+        if self.active:
+            self.active = False
+            self.save()
+            signals.cancelled.send(self)
+    
     def try_change(self, subscription):
         """Check whether upgrading/downgrading to `subscription' is possible.
 
