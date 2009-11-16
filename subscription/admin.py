@@ -1,12 +1,22 @@
+
+from datetime import datetime
+
 from django import forms
 from django.contrib import admin
 from django.utils.html import conditional_escape as esc
 
-from models import Subscription, UserSubscription, Transaction
+from subscription.models import Subscription, UserSubscription, Transaction
+from subscription.utils import extend_date_by
 
 def _pricing(sub): return sub.get_pricing_display()
 def _trial(sub): return sub.get_trial_display()
 
+#===============================================================================
+# class SubscriptionAdminForm(forms.ModelForm):
+#    class Meta:
+#        model = Subscription
+#===============================================================================
+    
 class SubscriptionAdmin(admin.ModelAdmin):
     list_display = ('name', _pricing, _trial)
     filter_horizontal = ('permissions',)

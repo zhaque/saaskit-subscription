@@ -44,9 +44,9 @@ def extend_date_by(date, amount, unit):
     Unknown unit.
     """
     if unit == 'D':
-        return date + datetime.timedelta(1)*amount
+        return date + datetime.timedelta(amount)
     elif unit == 'W':
-        return date + datetime.timedelta(7)*amount
+        return date + datetime.timedelta(7*amount)
     elif unit == 'M':
         y, m, d = date.year, date.month, date.day
         m += amount
@@ -55,6 +55,5 @@ def extend_date_by(date, amount, unit):
         if not m: m, y = 12, y-1
         return datetime.date(y, m, d)
     elif unit == 'Y':
-        y, m, d = date.year, date.month, date.day
-        return datetime.date(y+amount, m, d)
+        return datetime.date(date.year+amount, date.month, date.day)
     else: raise "Unknown unit."
