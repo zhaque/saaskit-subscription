@@ -1,6 +1,7 @@
+### -*- coding: utf-8 -*- ####################################################
+""" subscription signals """
 from django.dispatch import Signal
 
-## Our signals
 
 # recurring subscriptions
 subscribed = Signal()

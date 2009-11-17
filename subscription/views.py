@@ -12,7 +12,7 @@ _formclass_dot = _formclass.rindex('.')
 _formclass_module = __import__(_formclass[:_formclass_dot], {}, {}, [''])
 PayPalForm = getattr(_formclass_module, _formclass[_formclass_dot+1:])
 
-from subscription.models import Subscription, UserSubscription
+from subscription.models import Subscription
 from subscription.providers import PaymentMethodFactory
 from subscription.forms import _paypal_form
 

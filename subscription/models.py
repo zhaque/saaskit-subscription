@@ -10,24 +10,22 @@ from django.db.models.signals import post_init, post_save, pre_delete, pre_save
 
 from paypal.standard.ipn.models import PayPalIPN 
 
-from subscription import signals, utils
+from subscription import utils, signals
 
 class Transaction(models.Model):
     
     EVENT_SUBSCRIBED = 1
     EVENT_PAYMENT = 2
     EVENT_PAYMENT_INCORRECT = 3
-    #EVENT_PAYMENT_FLAGGED = 4
-    EVENT_REMOVED = 5
-    EVENT_ACTIVATED = 6
-    EVENT_CANCELLED = 7
-    EVENT_RECURED = 8
+    EVENT_REMOVED = 4
+    EVENT_ACTIVATED = 5
+    EVENT_CANCELLED = 6
+    EVENT_RECURED = 7
     
     EVENTS = (
         (EVENT_SUBSCRIBED, _('subscribed')),
         (EVENT_PAYMENT, _('payment')),
         (EVENT_PAYMENT_INCORRECT, _('payment incorrect')),
-        #(EVENT_PAYMENT_FLAGGED, _('payment flagged')),
         (EVENT_REMOVED, _('removed')),
         (EVENT_ACTIVATED, _('activated')),
         (EVENT_CANCELLED, _('cancelled')),
@@ -152,10 +150,10 @@ class Subscription(models.Model):
     def subscribe(self, user):
         try:
             existent = UserSubscription.objects.get(user=user)
-        except self.user_subscriptions.model.DoesNotExist:
-            us = self.user_subscriptions.create(user=user, subscription=self)
-            signals.subscribed.send(us)
-            return us
+        except UserSubscription.DoesNotExist:
+            user_subscription = self.user_subscriptions.create(user=user, subscription=self)
+            signals.subscribed.send(user_subscription)
+            return user_subscription
         else:
             if existent.subscription != self:
                 existent.subscription = self
@@ -253,9 +251,3 @@ class UserSubscription(models.Model):
         if self.expired():
             rv += u' (expired)'
         return rv
-
-def delete_expired():
-    """Unsubscribes all users whose subscription has expired."""
-    for us in UserSubscription.objects.get(expires__lte=datetime.datetime.now()):
-        us.delete()
-        Transaction(user=u, subscription=s, event=Transaction.EVENT_REMOVED).save()
