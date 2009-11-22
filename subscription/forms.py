@@ -27,9 +27,10 @@ def _paypal_form_args(upgrade_subscription=False, **kwargs):
                **kwargs)
     return rv
 
-def _paypal_form(subscription, user, upgrade_subscription=False):
-    if not user.is_authenticated: return None
-
+def _paypal_form(subscription, user, upgrade_subscription=False, extra=None):
+    
+    item_name = '%s: %s' % ( Site.objects.get_current().name, subscription.name )
+    
     if subscription.recurrence_unit:
         if not subscription.trial_period:
             trial = {}
@@ -39,11 +40,10 @@ def _paypal_form(subscription, user, upgrade_subscription=False):
                 'p1': subscription.trial_period,
                 't1': subscription.trial_unit,
                 }
-        return PayPalForm(
-            initial = _paypal_form_args(
+        
+        initial = _paypal_form_args(
                 cmd='_xclick-subscriptions',
-                item_name='%s: %s' % ( Site.objects.get_current().name,
-                                       subscription.name ),
+                item_name=item_name,
                 item_number = subscription.id,
                 custom = user.id,
                 a3=subscription.price,
@@ -53,14 +53,16 @@ def _paypal_form(subscription, user, upgrade_subscription=False):
                 sra=1,            # reattempt payment on payment error
                 upgrade_subscription=upgrade_subscription,
                 modify=upgrade_subscription and 1 or 0, # subscription modification (upgrade/downgrade)
-                **trial),
-            button_type='subscribe'
-            )
+                **trial)
+        
+        if extra is not None:
+            initial.update(extra)
+        
+        return PayPalForm(initial=initial, button_type='subscribe')
     else:
         return PayPalForm(
             initial = _paypal_form_args(
-                item_name='%s: %s' % ( Site.objects.get_current().name,
-                                       subscription.name ),
+                item_name=item_name,
                 item_number = subscription.id,
                 custom = user.id,
                 amount=subscription.price))

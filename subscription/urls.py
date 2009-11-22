@@ -2,6 +2,7 @@ from django.conf.urls.defaults import *
 from django.conf import settings
 from django.views.generic.list_detail import object_list, object_detail
 from django.contrib.auth.decorators import login_required
+from django.views.generic.simple import direct_to_template
 
 from subscription.models import Subscription, Transaction
 from subscription.decorators import pdf_response
@@ -39,15 +40,15 @@ urlpatterns = patterns('',
     
     (r'^paypal/', include('paypal.standard.ipn.urls')),
     
-    (r'^done/', 'django.views.generic.simple.direct_to_template', 
+    (r'^done/', login_required(direct_to_template), 
      {'template': 'subscription/subscription_done.html'}, 
      'subscription_done'),
     
-    (r'^change-done/', 'django.views.generic.simple.direct_to_template', 
+    (r'^change-done/', login_required(direct_to_template), 
      {'template': 'subscription/subscription_change_done.html'}, 
      'subscription_change_done'),
     
-    (r'^cancel/', 'django.views.generic.simple.direct_to_template', 
+    (r'^cancel/', login_required(direct_to_template), 
      {'template': 'subscription/subscription_cancel.html'}, 
      'subscription_cancel'),
      
