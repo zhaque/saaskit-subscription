@@ -77,8 +77,10 @@ class Subscription(models.Model):
     recurrence_unit = models.CharField(_("recurrence unit"), max_length=1, 
                                        choices=TIME_UNIT_CHOICES, default='M')
     
+    preparation_required = models.BooleanField(_("Admin should prepare environment"), default=False)
+    
     permissions = models.ManyToManyField(auth.models.Permission)
-
+     
     _PLURAL_UNITS = {
         'D': _('days'),
         'W': _('weeks'),

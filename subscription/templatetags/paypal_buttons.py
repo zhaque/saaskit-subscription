@@ -36,6 +36,7 @@ def paypal_shortcut(user, subscription):
                     upgrade_subscription=(us is not None) and (us.subscription != subscription))
     
     return {'form': form, 'change_denied_reasons': change_denied_reasons, 
+            'subscription': subscription,
             'current': us and (subscription == us.subscription) and us, 'cancel_url': cancel_url,
             'image_url': "https://www.paypal.com/en_US/i/btn/btn_unsubscribe_LG.gif"} 
     
