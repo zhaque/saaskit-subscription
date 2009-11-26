@@ -42,7 +42,7 @@ class InlineBase(admin.TabularInline):
     
 class TransactionInline(InlineBase):
     model = Transaction
-
+    
 class UserSubscriptionInline(InlineBase):
     model = UserSubscription
     
