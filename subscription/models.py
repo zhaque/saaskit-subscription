@@ -154,9 +154,7 @@ class Subscription(models.Model):
         try:
             existent = UserSubscription.objects.get(user=user)
         except UserSubscription.DoesNotExist:
-            user_subscription = self.user_subscriptions.create(user=user, subscription=self)
-            signals.subscribed.send(user_subscription)
-            return user_subscription
+            return self.user_subscriptions.create(user=user, subscription=self)
         else:
             if existent.subscription != self:
                 existent.subscription = self
