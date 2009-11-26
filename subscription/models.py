@@ -32,16 +32,17 @@ class Transaction(models.Model):
         (EVENT_RECURED, _('recured')),
     )
     
-    timestamp = models.DateTimeField(auto_now_add=True, editable=False)
-    subscription = models.ForeignKey('subscription.Subscription',
-                                     null=True, blank=True, editable=False)
+    timestamp = models.DateTimeField(auto_now_add=True)
+    subscription = models.ForeignKey('subscription.Subscription', related_name='transactions',
+                                     null=True, blank=True, )
     user = models.ForeignKey(auth.models.User, null=True, 
-                             blank=True, editable=False)
+                             blank=True, 
+                             related_name='subscription_transactions')
     ipn = models.ForeignKey(PayPalIPN, null=True, 
-                            blank=True, editable=False)
-    event = models.PositiveSmallIntegerField(choices=EVENTS, editable=False)
+                            blank=True)
+    event = models.PositiveSmallIntegerField(choices=EVENTS)
     amount = models.DecimalField(max_digits=64, decimal_places=2,
-                                 null=True, blank=True, editable=False)
+                                 null=True, blank=True)
     comment = models.TextField(blank=True, default='')
 
     class Meta:

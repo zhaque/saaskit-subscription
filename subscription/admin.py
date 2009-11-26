@@ -2,25 +2,17 @@
 from datetime import datetime
 
 from django import forms
+from django.forms.models import BaseInlineFormSet
 from django.contrib import admin
 from django.utils.html import conditional_escape as esc
+from django.contrib.auth.admin import UserAdmin, User
+from django.db import models
 
+from saaskit.widgets.readonlyhidden import ReadOnlyWidgetWithHidden
 from subscription.models import Subscription, UserSubscription, Transaction
-from subscription.utils import extend_date_by
 
 def _pricing(sub): return sub.get_pricing_display()
 def _trial(sub): return sub.get_trial_display()
-
-#===============================================================================
-# class SubscriptionAdminForm(forms.ModelForm):
-#    class Meta:
-#        model = Subscription
-#===============================================================================
-    
-class SubscriptionAdmin(admin.ModelAdmin):
-    list_display = ('name', _pricing, _trial)
-    filter_horizontal = ('permissions',)
-admin.site.register(Subscription, SubscriptionAdmin)
 
 def _subscription(trans):
     return u'<a href="/admin/subscription/subscription/%d/">%s</a>' % (
@@ -37,37 +29,36 @@ def _ipn(trans):
         trans.ipn.pk, trans.ipn.pk )
 _ipn.allow_tags = True
 
-class UserSubscriptionAdminForm(forms.ModelForm):
-    class Meta:
-        model = UserSubscription
-    extend_subscription = forms.fields.BooleanField(required=False)
+def event(trans): return trans.get_event_display()
+def timestamp(trans): return trans.timestamp
+
+class InlineBase(admin.TabularInline):
+    extra = 0
+    
+    def get_formset(self, request, obj=None, **kwargs):
+        kwargs['can_delete'] = False
+        return super(InlineBase, self).get_formset(request, obj=obj, **kwargs)
+    
+    
+class TransactionInline(InlineBase):
+    model = Transaction
+
+class UserSubscriptionInline(InlineBase):
+    model = UserSubscription
+    
+class SubscriptionAdmin(admin.ModelAdmin):
+    list_display = ('name', _pricing, _trial)
+    filter_horizontal = ('permissions',)
+    inlines = (UserSubscriptionInline, TransactionInline)
+admin.site.register(Subscription, SubscriptionAdmin)
+
 
 class UserSubscriptionAdmin(admin.ModelAdmin):
     list_display = ( '__unicode__', _user, _subscription, 'active', 'expires')
     list_display_links = ( '__unicode__', )
-    list_filter = ('active', 'subscription', )
+    list_filter = ('active', 'subscription', 'expires')
     date_hierarchy = 'expires'
-    form = UserSubscriptionAdminForm
-#===============================================================================
-#    
-#    fieldsets = (
-#        (None, {'fields' : ('user', 'subscription', 'expires', 'active')}),
-#        ('Actions', {'fields' : ('extend_subscription',),
-#                     'classes' : ('collapse',)}),
-#        )
-# 
-#    def save_model(self, request, obj, form, change):
-#        if form.cleaned_data['extend_subscription']:
-#            obj.extend()
-#        obj.save()
-#===============================================================================
-
-    # action for Django-SVN or django-batch-admin app
-    actions = ( 'extend', )
-
-    def extend(self, request, queryset):
-        for us in queryset.all(): us.extend()
-    extend.short_description = 'Extend subscription'
+    ordering = ('-expires',)
 
 admin.site.register(UserSubscription, UserSubscriptionAdmin)
 
@@ -77,3 +68,9 @@ class TransactionAdmin(admin.ModelAdmin):
     list_display_links = ('timestamp', 'id')
     list_filter = ('subscription', 'user')
 admin.site.register(Transaction, TransactionAdmin)
+
+class UserAdminSubscription(UserAdmin):
+    inlines = (UserSubscriptionInline, TransactionInline)
+ 
+admin.site.unregister(User)
+admin.site.register(User, UserAdminSubscription)
