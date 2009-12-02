@@ -5,7 +5,7 @@ import datetime
 from django.conf import settings
 from django.db import models
 from django.contrib import auth
-from django.utils.translation import ugettext as _, ungettext, ugettext_lazy
+from django.utils.translation import ungettext, ugettext_lazy as _
 from django.db.models.signals import post_init, post_save, pre_delete, pre_save
 
 from paypal.standard.ipn.models import PayPalIPN 
@@ -59,10 +59,10 @@ _recurrence_unit_days = {
 class Subscription(models.Model):
     
     TIME_UNIT_CHOICES=(
-        ('D', ugettext_lazy('Day')),
-        ('W', ugettext_lazy('Week')),
-        ('M', ugettext_lazy('Month')),
-        ('Y', ugettext_lazy('Year')),
+        ('D', _('Day')),
+        ('W', _('Week')),
+        ('M', _('Month')),
+        ('Y', _('Year')),
     )
 
     

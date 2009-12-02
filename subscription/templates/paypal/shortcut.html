@@ -1,3 +1,4 @@
+{% load i18n %}
 {% if current %}
   {% if not current.active %}
     {{ form.sandbox }}
@@ -6,7 +7,7 @@
   {% endif %}
 {% else %}
   {% if change_denied_reasons %}
-    <p><strong>You cannot switch to this plan.</strong> Reasons:
+    <p><strong>{% trans "You cannot switch to this plan." %}</strong> {% trans "Reasons" %}:
     <ul>
     {% for reason in change_denied_reasons %}
       <li>{{ reason }}</li>
