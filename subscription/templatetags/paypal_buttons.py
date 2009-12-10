@@ -5,6 +5,8 @@ import urllib
 from django import template
 from django.conf import settings
 
+from paypal.standard.conf import TEST
+
 register = template.Library()
 
 from subscription.models import UserSubscription
@@ -35,7 +37,8 @@ def paypal_shortcut(user, subscription):
         form = _paypal_form(subscription, user,
                     upgrade_subscription=(us is not None) and (us.subscription != subscription))
     
-    return {'form': form, 'change_denied_reasons': change_denied_reasons, 
+    return {'form': form, 'change_denied_reasons': change_denied_reasons,
+            'test': TEST,
             'subscription': subscription,
             'current': us and (subscription == us.subscription) and us, 'cancel_url': cancel_url,
             'image_url': "https://www.paypal.com/en_US/i/btn/btn_unsubscribe_LG.gif"} 

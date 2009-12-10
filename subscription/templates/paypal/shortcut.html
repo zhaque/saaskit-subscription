@@ -1,7 +1,11 @@
-{% load i18n %}
+{% load i18n setting %}
 {% if current %}
   {% if not current.active %}
+    {% if test %}
     {{ form.sandbox }}
+    {% else %}
+    {{ form.render }}
+    {% endif %}
   {% else %}
     <a href="{{ cancel_url }}"> <img src="{{ image_url }}"></a>
   {% endif %}
@@ -14,7 +18,11 @@
     {% endfor %}
     </ul>
   {% else %}
-    {{ form.sandbox }}
+    {% if test %}
+      {{ form.sandbox }}
+    {% else %}
+      {{ form.render }}
+    {% endif %}
   {% endif %}
 
 {% endif %}

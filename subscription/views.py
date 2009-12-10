@@ -7,11 +7,6 @@ from django.core.urlresolvers import reverse
 from django.shortcuts import get_object_or_404, redirect
 from django.views.generic.simple import direct_to_template
 
-_formclass = getattr(settings, 'SUBSCRIPTION_PAYPAL_FORM', 'paypal.standard.forms.PayPalPaymentsForm')
-_formclass_dot = _formclass.rindex('.')
-_formclass_module = __import__(_formclass[:_formclass_dot], {}, {}, [''])
-PayPalForm = getattr(_formclass_module, _formclass[_formclass_dot+1:])
-
 from subscription.models import Subscription
 from subscription.providers import PaymentMethodFactory
 from subscription.forms import _paypal_form
