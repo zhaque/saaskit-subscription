@@ -1,5 +1,5 @@
-Django Subscription
-===================
+SaaS kit Subscription
+======================
 
 Django-subscription is an application for handling PayPal-based pay
 subscriptions. Module does not handle explicit permissions; instead,
@@ -352,24 +352,3 @@ Table of Contents
   inactive UserSubscription objects, cancel was probably a mistake)
   and notify user of his mistake.
 
-9 Example code
-~~~~~~~~~~~~~~
-  Example usage and templates are available as `django-saas-kit'
-  project at [http://github.com/CrowdSense/django-saas-kit/]
-
-10 Bugs and omissions
-~~~~~~~~~~~~~~~~~~~~~
-  - There is no `setup.py' script for automated installation.
-  - No support for PayPal PDT; PDT has only presentational value (IPN
-    needs to be received anyway, and PDT should be used only to
-    display transaction details to user on after transaction landing
-    page), so support for it has been intentionally omitted.
-
-10.1 Plans
-==========
-  - Single payments for subscription, including possibility of
-    pay-as-you-go scheme
-
-11 License
-~~~~~~~~~~
-  This project is licensed on terms of GPL (GPL-LICENSE.txt) licenses. 
