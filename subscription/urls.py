@@ -15,10 +15,10 @@ invoice_info = {
     'queryset': Transaction.objects.filter(event__exact=Transaction.EVENT_PAYMENT).select_related()
 }
 
-invoice_listing_info = {'template_name': 'subscription/invoice_history.html'}
+invoice_listing_info = {'template_name': 'invoice/invoice_history.html'}
 invoice_listing_info.update(invoice_info)
 
-invoice_detail_info = {'template_name': 'subscription/invoice.html'}
+invoice_detail_info = {'template_name': 'invoice/invoice.html'}
 invoice_detail_info.update(invoice_info)
 
 invoice_queryset_wrapper = lambda request, queryset: queryset.filter(user=request.user)
