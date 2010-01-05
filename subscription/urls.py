@@ -36,6 +36,10 @@ urlpatterns = patterns('',
         {'template_name': 'subscription/subscription_list.html',
          'queryset': Subscription.objects.all()}, name='subscription_list'),
 
+    url(r'^plans/', 'django.views.generic.list_detail.object_list', 
+        {'template_name': 'subscription/plans.html',
+         'queryset': Subscription.objects.all()}, name='subscription_list'),
+
     url(r'^(?P<object_id>\d+)/$', details_view, name='subscription_detail'),
     
     (r'^paypal/', include('paypal.standard.ipn.urls')),
