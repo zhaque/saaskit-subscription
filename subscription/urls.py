@@ -38,7 +38,7 @@ urlpatterns = patterns('',
 
     url(r'^plans/', 'django.views.generic.list_detail.object_list', 
         {'template_name': 'subscription/plans.html',
-         'queryset': Subscription.objects.all()}, name='subscription_list'),
+         'queryset': Subscription.objects.all()}, name='plans'),
 
     url(r'^(?P<object_id>\d+)/$', details_view, name='subscription_detail'),
     
